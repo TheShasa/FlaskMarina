@@ -6,11 +6,16 @@ from ast import literal_eval
 import time
 from io import BytesIO
 import base64
-
 from PIL import Image
-from keras_facenet import FaceNet
 import cv2
-encoder = FaceNet().model
+from model_arch import IrisModel
+
+
+encoder = IrisModel(
+    input_shape=(None, None, 3),
+    classes=512
+)
+encoder.load_weights('model_weights/weights.h5')
 
 
 def preprocessing(self, img):
@@ -26,6 +31,12 @@ def get_embedding(image):
     # x = x / np.sqrt(np.sum(x ** 2))
     # return x
     return encoder.predict(image)
+
+
+def crop(image, box):
+    w, h = image.shape[:2]
+    return image[max(0, box[0]):min(w, box[0]+box[2]),
+                 max(0, box[1]):min(h, box[1]+box[3])]
 
 
 def base64_to_image(img_base64):
@@ -44,7 +55,8 @@ def image_to_base64(image):
 
 def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
     image = base64_to_image(image)
-    image = image[box[0]:box[0]+box[2], box[1]:box[1]+box[3]]
+    image = crop(image, box)
+
     embed = get_embedding(image)
 
     print(embed)
@@ -107,7 +119,8 @@ def recognize(image, threshold, mysql):
 def verify(image, box, customer_id, record_id, threshold, mysql):
 
     current_embed = base64_to_image(image)
-    image = image[box[0]:box[0]+box[2], box[1]:box[1]+box[3]]
+    image = crop(image, box)
+
     cur = mysql.connection.cursor()
     result = cur.execute(
         "SELECT * FROM Embeds WHERE customer_id=(%s)", [customer_id])

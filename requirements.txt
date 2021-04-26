@@ -1,6 +1,5 @@
 pandas==1.2.4
 tensorflow==2.3.0
-keras-facenet==0.3.2
 Flask==1.1.2
 Flask-MySQLdb==0.2.0
 Pillow==8.2.0

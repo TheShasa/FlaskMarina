@@ -10,7 +10,6 @@ from PIL import Image
 import cv2
 from model_arch import IrisModel
 
-
 encoder = IrisModel(
     input_shape=(None, None, 3),
     classes=512
@@ -18,7 +17,7 @@ encoder = IrisModel(
 encoder.load_weights('model_weights/weights.h5')
 
 
-def preprocessing(self, img):
+def preprocessing(img):
     image_size = 160
     img = cv2.resize(img, (image_size, image_size))
     img = np.expand_dims(np.array(img), axis=0)
@@ -34,9 +33,20 @@ def get_embedding(image):
 
 
 def crop(image, box):
-    w, h = image.shape[:2]
-    return image[max(0, box[0]):min(w, box[0]+box[2]),
-                 max(0, box[1]):min(h, box[1]+box[3])]
+    h, w = image.shape[:2]
+    # print(h, w)
+    # lr, rr = get_left_right_ear(image)
+
+    # if lr[0]+rr[0] == 0:  # did not found face
+    #     left = box[0]
+    #     right = box[0]+box[2]
+    # else:  # use box from react
+    #     left = min(lr[0], rr[0])
+    #     right = max(lr[0], rr[0])
+    return image[
+        max(0, box[1]):min(h, box[1]+box[3]),
+        max(0, box[0]):min(h, box[0]+box[2])]
+    # max(0, left):min(w, right)]
 
 
 def base64_to_image(img_base64):
@@ -55,11 +65,14 @@ def image_to_base64(image):
 
 def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
     image = base64_to_image(image)
+
+    image = cv2.resize(image, (box[5], box[4]))
+    #cv2.imwrite('1.png', image)
     image = crop(image, box)
+    #cv2.imwrite('2.png', image)
 
     embed = get_embedding(image)
 
-    print(embed)
     if embed is None:
         return False
     bf = embed.tobytes()  # np.getbuffer(embed, dtype=np.float32)
@@ -80,7 +93,7 @@ def recognize(image, threshold, mysql):
     cur = mysql.connection.cursor()
     result = cur.execute("SELECT * FROM Embeds")
     ids = np.zeros(result, dtype=np.int32)
-    embeds = np.zeros((result, 256))
+    embeds = np.zeros((result, 512))
     # get teh data
     if result > 0 and current_embed is not None:
 
@@ -118,14 +131,16 @@ def recognize(image, threshold, mysql):
 
 def verify(image, box, customer_id, record_id, threshold, mysql):
 
-    current_embed = base64_to_image(image)
+    image = base64_to_image(image)
+    image = cv2.resize(image, (box[5], box[4]))
     image = crop(image, box)
+    current_embed = get_embedding(image)
 
     cur = mysql.connection.cursor()
     result = cur.execute(
         "SELECT * FROM Embeds WHERE customer_id=(%s)", [customer_id])
     ids = np.zeros(result, dtype=np.int32)
-    embeds = np.zeros((result, 256))
+    embeds = np.zeros((result, 512))
     # get the data
     if result > 0 and current_embed is not None:
 
@@ -134,10 +149,10 @@ def verify(image, box, customer_id, record_id, threshold, mysql):
         for i, _dict in enumerate(data):
             ids[i] = int(_dict['customer_id'])
             embeds[i] = np.frombuffer(_dict['embed'], dtype=np.float32)
-
         # calculate the score with current_embed
         utt_sim_matrix = np.inner(current_embed, embeds)
         max_value = utt_sim_matrix.max()
+
         # if max_value > 0.5:
         #     enroll(image, box, customer_id, record_id, mysql, 0)
 

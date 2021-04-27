@@ -2,7 +2,7 @@
 #To run flask
 1. export FLASK_APP=app.py
 2. export FLASK_DEBUG=1
-3. python3 -m flask run
+3. python3 -m flask run -h your_ip_from_ifconfig
 
 # To create mysql database
 1. mysql -h localhost -u root -p(without password)

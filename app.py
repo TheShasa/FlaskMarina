@@ -27,38 +27,21 @@ app.config['MYSQL_HOST'] = mysql_host
 app.config['MYSQL_DB'] = mysql_database
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 mysql = MySQL(app)
-#
-#
-# app = Flask(__name__)
-# app.config['JSON_SORT_KEYS'] = False
-# app.config['MYSQL_USER'] = 'root'
-# app.config['MYSQL_PASSWORD'] = ''
-# app.config['MYSQL_HOST'] = 'localhost'
-# app.config['MYSQL_DB'] = 'voice_embedings'
-# app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
-# mysql = MySQL(app)
-
-
-#
-# @app.route('/')
-# def index():
-#     return "Hello, World!"
-#
-#
-# @app.route('/raw_check', methods=['POST'])
-# def raw_check():
-#     return jsonify(raw_to_dict(request.get_data()))
 
 threshold = 0.5
 
 
 @app.route('/verification', methods=['POST'])
 def verification():
+
     json_dict = raw_to_dict(request.get_data())
     customer_id = json_dict['customer_id']
-    record_id = 0  # json_dict['record_id']
+    record_id = 0
     image = json_dict['image']
-    verified, score = verify(image, customer_id, record_id, threshold, mysql)
+    box = json_dict['box']
+
+    verified, score = verify(image, box, customer_id,
+                             record_id, threshold, mysql)
     if verified:
         return jsonify({'status': 200, 'score': score, 'isMatch': True})
     else:
@@ -72,9 +55,15 @@ def enrollemnt():
     image = json_dict['image']
     box = json_dict['box']
 
-    record_id = 0  # json_dict['records_id']
-    #
+    record_id = 0
     result = {'status': 200, 'id': customer_id}
+    # delete old enrollment
+    customer_id = json_dict['customer_id']
+    cur = mysql.connection.cursor()
+    cur.execute("DELETE FROM Embeds WHERE customer_id=%s" % customer_id)
+    mysql.connection.commit()
+    cur.close()
+
     enroll(image, box, customer_id, record_id, mysql)
 
     return jsonify(result)

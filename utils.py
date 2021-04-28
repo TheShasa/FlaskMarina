@@ -13,6 +13,8 @@ from datetime import datetime_CAPI
 import os
 from tflit_model import TensorFlowModel
 import mtcnn
+from datetime import datetime
+
 face_detector = mtcnn.MTCNN()
 encoder = TensorFlowModel()
 encoder.load(os.path.join(os.getcwd(), 'facenet_tflite/model.tflite'))
@@ -27,6 +29,7 @@ def preprocessing(img):
 
 def get_embedding(image):
     image = preprocessing(image)
+    image = np.array(image, dtype=np.float32)
     # x = np.random.rand(256)
     # x = x / np.sqrt(np.sum(x ** 2))
     # return x

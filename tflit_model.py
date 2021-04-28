@@ -37,3 +37,9 @@ if __name__ == '__main__':
         emb = model.predict(img)
         print(emb[0][:10])
     print(time.time()-start_)
+
+
+    # Get input and output tensors.
+    input_details = model.interpreter.get_input_details()
+    output_details = model.interpreter.get_output_details()
+    print(input_details)

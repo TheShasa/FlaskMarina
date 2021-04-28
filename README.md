@@ -8,7 +8,7 @@
 1. mysql -h localhost -u root -p(without password)
 2. CREATE DATABASE image_embedings;
 3. USE image_embedings;
-4. CREATE TABLE Embeds(customer_id VARCHAR(20), record_id VARCHAR(20), embed BLOB, from_enrollment BOOL, dt DATETIME);
+4. CREATE TABLE Embeds(customer_id VARCHAR(50), record_id VARCHAR(20), embed BLOB, from_enrollment BOOL, dt DATETIME);
 
 
 # Useful mysql functions

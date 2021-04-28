@@ -5,7 +5,7 @@ from utils import raw_to_dict, enroll, verify
 import numpy as np
 from configparser import ConfigParser
 # from ast import literal_eval
-
+import time
 config_object = ConfigParser()
 config_object.read("config.ini")
 app_config = config_object["app"]
@@ -33,7 +33,7 @@ threshold = 0.5
 
 @app.route('/verification', methods=['POST'])
 def verification():
-
+    st = time.time()
     json_dict = raw_to_dict(request.get_data())
     customer_id = json_dict['customer_id']
     record_id = 0
@@ -42,6 +42,7 @@ def verification():
 
     verified, score = verify(image, box, customer_id,
                              record_id, threshold, mysql)
+    print(time.time()-st)
     if verified:
         return jsonify({'status': 200, 'score': score, 'isMatch': True})
     else:
@@ -60,7 +61,7 @@ def enrollemnt():
     # delete old enrollment
     customer_id = json_dict['customer_id']
     cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM Embeds WHERE customer_id=%s" % customer_id)
+    cur.execute("DELETE FROM Embeds WHERE customer_id='%s'" % customer_id)
     mysql.connection.commit()
     cur.close()
 
@@ -74,7 +75,7 @@ def delete_user():
     json_dict = raw_to_dict(request.get_data())
     customer_id = json_dict['customer_id']
     cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM Embeds WHERE customer_id=%s" % customer_id)
+    cur.execute("DELETE FROM Embeds WHERE customer_id='%s'" % customer_id)
     mysql.connection.commit()
     cur.close()
     return jsonify({'status': 200})

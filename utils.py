@@ -9,12 +9,13 @@ import base64
 from PIL import Image
 import cv2
 from model_arch import IrisModel
-
-encoder = IrisModel(
-    input_shape=(None, None, 3),
-    classes=512
-)
-encoder.load_weights('model_weights/weights.h5')
+from datetime import datetime_CAPI
+import os
+from tflit_model import TensorFlowModel
+import mtcnn
+face_detector = mtcnn.MTCNN()
+encoder = TensorFlowModel()
+encoder.load(os.path.join(os.getcwd(), 'facenet_tflite/model.tflite'))
 
 
 def preprocessing(img):
@@ -34,19 +35,25 @@ def get_embedding(image):
 
 def crop(image, box):
     h, w = image.shape[:2]
+    pred = face_detector.detect_faces(image)
     # print(h, w)
     # lr, rr = get_left_right_ear(image)
 
-    # if lr[0]+rr[0] == 0:  # did not found face
-    #     left = box[0]
-    #     right = box[0]+box[2]
-    # else:  # use box from react
-    #     left = min(lr[0], rr[0])
-    #     right = max(lr[0], rr[0])
+    if len(pred) == 0:  # did not found face
+        left = box[0]
+        right = box[0]+box[2]
+    else:  # use box from react
+        left_eye = pred[0]['keypoints']['left_eye']
+        right_eye = pred[0]['keypoints']['right_eye']
+        left = min(left_eye[0], right_eye[0])
+        right = max(left_eye[0], right_eye[0])
+        width = abs(right-left)
+        left -= width//2
+        right += width//2
     return image[
         max(0, box[1]):min(h, box[1]+box[3]),
-        max(0, box[0]):min(h, box[0]+box[2])]
-    # max(0, left):min(w, right)]
+        #  max(0, box[0]):min(h, box[0]+box[2])]
+        max(0, left):min(w, right)]
 
 
 def base64_to_image(img_base64):
@@ -67,9 +74,13 @@ def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
     image = base64_to_image(image)
 
     image = cv2.resize(image, (box[5], box[4]))
-    #cv2.imwrite('1.png', image)
+    now = datetime.now()
+    date_time = now.strftime("%m_%d_%Y_%H_%M_%S")
+    print('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png")
+    cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png", image)
+
     image = crop(image, box)
-    #cv2.imwrite('2.png', image)
+    cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+'_2.png', image)
 
     embed = get_embedding(image)
 
@@ -77,7 +88,7 @@ def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
         return False
     bf = embed.tobytes()  # np.getbuffer(embed, dtype=np.float32)
     cur = mysql.connection.cursor()
-
+    print(customer_id)
     cur.execute("INSERT INTO Embeds(customer_id,record_id, embed, from_enrollment, dt) VALUES(%s, %s, %s, %s, %s)",
                 (customer_id, record_id, bf, from_enroll, time.strftime('%Y-%m-%d %H:%M:%S')))
     mysql.connection.commit()
@@ -100,7 +111,7 @@ def recognize(image, threshold, mysql):
         # get the data from select and save to arrays
         data = cur.fetchall()
         for i, _dict in enumerate(data):
-            ids[i] = int(_dict['customer_id'])
+            ids[i] = _dict['customer_id']
             embeds[i] = np.frombuffer(_dict['embed'], dtype=np.float32)
 
         # calculate the score with current_embed
@@ -131,7 +142,7 @@ def recognize(image, threshold, mysql):
 
 def verify(image, box, customer_id, record_id, threshold, mysql):
 
-    image = base64_to_image(image)
+    image = np.random.random((224,224,3))#base64_to_image(image)
     image = cv2.resize(image, (box[5], box[4]))
     image = crop(image, box)
     current_embed = get_embedding(image)
@@ -139,7 +150,6 @@ def verify(image, box, customer_id, record_id, threshold, mysql):
     cur = mysql.connection.cursor()
     result = cur.execute(
         "SELECT * FROM Embeds WHERE customer_id=(%s)", [customer_id])
-    ids = np.zeros(result, dtype=np.int32)
     embeds = np.zeros((result, 512))
     # get the data
     if result > 0 and current_embed is not None:
@@ -147,7 +157,6 @@ def verify(image, box, customer_id, record_id, threshold, mysql):
         # get the data from select and save to arrays
         data = cur.fetchall()
         for i, _dict in enumerate(data):
-            ids[i] = int(_dict['customer_id'])
             embeds[i] = np.frombuffer(_dict['embed'], dtype=np.float32)
         # calculate the score with current_embed
         utt_sim_matrix = np.inner(current_embed, embeds)

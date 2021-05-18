@@ -20,6 +20,7 @@ encoder = TensorFlowModel()
 encoder.load(os.path.join(os.getcwd(), 'facenet_tflite/model.tflite'))
 
 
+debug = True
 def preprocessing(img):
     image_size = 160
     img = cv2.resize(img, (image_size, image_size))
@@ -79,11 +80,13 @@ def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
     image = cv2.resize(image, (box[5], box[4]))
     now = datetime.now()
     date_time = now.strftime("%m_%d_%Y_%H_%M_%S")
-    print('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png")
-    cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png", image)
+    if debug:
+        print('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png")
+        cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png", image)
 
     image = crop(image, box)
-    cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+'_2.png', image)
+    if debug:
+        cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+'_2.png', image)
 
     embed = get_embedding(image)
 
@@ -145,7 +148,7 @@ def recognize(image, threshold, mysql):
 
 def verify(image, box, customer_id, record_id, threshold, mysql):
 
-    image = np.random.random((224,224,3))#base64_to_image(image)
+    image = base64_to_image(image)
     image = cv2.resize(image, (box[5], box[4]))
     image = crop(image, box)
     current_embed = get_embedding(image)
@@ -169,6 +172,11 @@ def verify(image, box, customer_id, record_id, threshold, mysql):
         #     enroll(image, box, customer_id, record_id, mysql, 0)
 
         if max_value > threshold:
+            if debug:
+                now = datetime.now()
+                date_time = now.strftime("%m_%d_%Y_%H_%M_%S")
+                
+                cv2.imwrite('val_storage/'+str(customer_id)+"_"+date_time+"_"+str(round(max_value,2))+".png", image)
             return True, max_value
         else:
             return False, max_value

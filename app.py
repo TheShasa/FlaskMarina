@@ -42,11 +42,11 @@ def verification():
 
     verified, score = verify(image, box, customer_id,
                              record_id, threshold, mysql)
-    print(time.time()-st)
+    time_took = time.time()-st
     if verified:
-        return jsonify({'status': 200, 'score': score, 'isMatch': True})
+        return jsonify({'status': 200, 'score': score, 'isMatch': True, "time_took": time_took})
     else:
-        return jsonify({'status': 200, 'score': score, 'isMatch': False})
+        return jsonify({'status': 200, 'score': score, 'isMatch': False, "time_took": time_took})
 
 
 @app.route('/enroll', methods=['POST'])

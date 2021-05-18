@@ -55,7 +55,7 @@ def crop(image, box):
         left -= width//2
         right += width//2
     return image[
-        max(0, box[1]):min(h, box[1]+box[3]),
+        max(0, box[1]):min(h, box[1]+box[3]*2//3),
         #  max(0, box[0]):min(h, box[0]+box[2])]
         max(0, left):min(w, right)]
 

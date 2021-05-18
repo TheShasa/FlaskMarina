@@ -6,6 +6,7 @@ import numpy as np
 from configparser import ConfigParser
 # from ast import literal_eval
 import time
+
 config_object = ConfigParser()
 config_object.read("config.ini")
 app_config = config_object["app"]
@@ -28,7 +29,7 @@ app.config['MYSQL_DB'] = mysql_database
 app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 mysql = MySQL(app)
 
-threshold = 0.5
+threshold = 0.7 
 
 
 @app.route('/verification', methods=['POST'])

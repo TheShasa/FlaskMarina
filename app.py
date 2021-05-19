@@ -40,15 +40,17 @@ def verification():
     record_id = 0
     image = json_dict['image']
     box = json_dict['box']
-
-    verified, score = verify(image, box, customer_id,
-                             record_id, threshold, mysql)
-    time_took = time.time()-st
-    if verified:
-        return jsonify({'status': 200, 'score': score, 'isMatch': True, "time_took": time_took})
-    else:
-        return jsonify({'status': 200, 'score': score, 'isMatch': False, "time_took": time_took})
-
+    try:
+        verified, score = verify(image, box, customer_id,
+                                record_id, threshold, mysql)
+        time_took = time.time()-st
+        if verified:
+            return jsonify({'status': 200, 'score': score, 'isMatch': True, "time_took": time_took})
+        else:
+            return jsonify({'status': 200, 'score': score, 'isMatch': False, "time_took": time_took})
+    except Exception as error:
+        time_took = time.time()-st
+        return jsonify({'status': 300, 'score': 0, 'isMatch': False, "time_took": time_took})
 
 @app.route('/enroll', methods=['POST'])
 def enrollemnt():
@@ -65,10 +67,12 @@ def enrollemnt():
     cur.execute("DELETE FROM Embeds WHERE customer_id='%s'" % customer_id)
     mysql.connection.commit()
     cur.close()
-
-    enroll(image, box, customer_id, record_id, mysql)
-
-    return jsonify(result)
+    try:
+        enroll(image, box, customer_id, record_id, mysql)
+        return jsonify(result)
+    except Exception as error:
+        return jsonify({'status': 300, 'id': customer_id})
+        
 
 
 @app.route('/delete_user', methods=['POST'])

@@ -15,3 +15,8 @@
 * SHOW DATABASES; //show all database
 * DROP DATABASE databasename; //delete database
 * TRUNCATE TABLE Embeds; //clear the data in table
+
+
+##killall gunicorn
+##gunicorn --bind 0.0.0.0:5000 wsgi:app
+## --bind 0.0.0.0:5000 --daemon wsgi:app for deamon

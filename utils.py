@@ -8,19 +8,22 @@ from io import BytesIO
 import base64
 from PIL import Image
 import cv2
-from model_arch import IrisModel
-from datetime import datetime_CAPI
 import os
 from tflit_model import TensorFlowModel
-import mtcnn
 from datetime import datetime
 
-face_detector = mtcnn.MTCNN()
 encoder = TensorFlowModel()
 encoder.load(os.path.join(os.getcwd(), 'facenet_tflite/model.tflite'))
 
 
 debug = True
+if debug:
+    if not os.path.exists('storage'):
+        os.mkdir('storage')
+    if not os.path.exists('val_storage'):
+        os.mkdir('val_storage')
+
+
 def preprocessing(img):
     image_size = 160
     img = cv2.resize(img, (image_size, image_size))
@@ -37,27 +40,9 @@ def get_embedding(image):
     return encoder.predict(image)
 
 
-def crop(image, box):
+def crop(image):
     h, w = image.shape[:2]
-    pred = face_detector.detect_faces(image)
-    # print(h, w)
-    # lr, rr = get_left_right_ear(image)
-
-    if len(pred) == 0:  # did not found face
-        left = box[0]
-        right = box[0]+box[2]
-    else:  # use box from react
-        left_eye = pred[0]['keypoints']['left_eye']
-        right_eye = pred[0]['keypoints']['right_eye']
-        left = min(left_eye[0], right_eye[0])
-        right = max(left_eye[0], right_eye[0])
-        width = abs(right-left)
-        left -= width//2
-        right += width//2
-    return image[
-        max(0, box[1]):min(h, box[1]+box[3]*2//3),
-        #  max(0, box[0]):min(h, box[0]+box[2])]
-        max(0, left):min(w, right)]
+    return image[:h//2, :]
 
 
 def base64_to_image(img_base64):
@@ -74,19 +59,25 @@ def image_to_base64(image):
     return str(new_image_string)
 
 
-def enroll(image, box, customer_id, record_id, mysql, from_enroll=1):
+def enroll(image, customer_id, record_id, mysql, from_enroll=1):
     image = base64_to_image(image)
 
-    image = cv2.resize(image, (box[5], box[4]))
+    # image = cv2.resize(image, (box[5], box[4]))
     now = datetime.now()
     date_time = now.strftime("%m_%d_%Y_%H_%M_%S")
-    if debug:
-        print('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png")
-        cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+"_1.png", image)
 
-    image = crop(image, box)
     if debug:
-        cv2.imwrite('storage/'+str(customer_id)+"_"+date_time+"_"+'_2.png', image)
+        folder = 'storage/'+str(customer_id)
+        if not os.path.exists(folder):
+            os.mkdir(folder)
+
+        cv2.imwrite(folder + "/" +
+                    date_time+"_"+"_1.png", image)
+
+    image = crop(image)
+    if debug:
+        cv2.imwrite(folder +
+                    "/"+date_time+"_"+'_2.png', image)
 
     embed = get_embedding(image)
 
@@ -146,11 +137,11 @@ def recognize(image, threshold, mysql):
     return None
 
 
-def verify(image, box, customer_id, record_id, threshold, mysql):
+def verify(image, customer_id, record_id, threshold, mysql):
 
     image = base64_to_image(image)
-    image = cv2.resize(image, (box[5], box[4]))
-    image = crop(image, box)
+    # image = cv2.resize(image, (box[5], box[4]))
+    image = crop(image)
     current_embed = get_embedding(image)
 
     cur = mysql.connection.cursor()
@@ -172,11 +163,17 @@ def verify(image, box, customer_id, record_id, threshold, mysql):
         #     enroll(image, box, customer_id, record_id, mysql, 0)
 
         if max_value > threshold:
+
             if debug:
+                folder = 'val_storage/'+str(customer_id)
+
+                if not os.path.exists(folder):
+                    os.mkdir(folder)
                 now = datetime.now()
                 date_time = now.strftime("%m_%d_%Y_%H_%M_%S")
-                
-                cv2.imwrite('val_storage/'+str(customer_id)+"_"+date_time+"_"+str(round(max_value,2))+".png", image)
+
+                cv2.imwrite(folder+"/" +
+                            date_time+"_"+str(round(max_value, 2))+".png", image)
             return True, max_value
         else:
             return False, max_value

@@ -39,9 +39,9 @@ def verification():
     customer_id = json_dict['customer_id']
     record_id = 0
     image = json_dict['image']
-    box = json_dict['box']
+    # box = json_dict['box']
     try:
-        verified, score = verify(image, box, customer_id,
+        verified, score = verify(image, customer_id,
                                 record_id, threshold, mysql)
         time_took = time.time()-st
         if verified:
@@ -57,7 +57,7 @@ def enrollemnt():
     json_dict = raw_to_dict(request.get_data())
     customer_id = json_dict['customer_id']
     image = json_dict['image']
-    box = json_dict['box']
+    # box = json_dict['box']
 
     record_id = 0
     result = {'status': 200, 'id': customer_id}
@@ -68,7 +68,7 @@ def enrollemnt():
     mysql.connection.commit()
     cur.close()
     try:
-        enroll(image, box, customer_id, record_id, mysql)
+        enroll(image, customer_id, record_id, mysql)
         return jsonify(result)
     except Exception as error:
         return jsonify({'status': 300, 'id': customer_id})
